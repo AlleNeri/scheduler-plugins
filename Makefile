@@ -34,6 +34,25 @@ GO_BASE_IMAGE?=golang
 VERSION=$(shell echo $(RELEASE_VERSION) | awk -F - '{print $$2}')
 VERSION:=$(or $(VERSION),v0.0.$(shell date +%Y%m%d))
 
+TAR_IMAGE_DIR=tar
+CONTROLLER_IMAGE_NAME=localhost:5000/scheduler-plugins/controller
+SCHEDULER_IMAGE_NAME=localhost:5000/scheduler-plugins/kube-scheduler
+CONTROLLER_IMAGE_TAR=controller.tar
+SCHEDULER_IMAGE_TAR=kube-scheduler.tar
+
+.PHONY: load-local-image-tar
+load-local-image-tar: local-image-tar
+	minikube image load $(TAR_IMAGE_DIR)/$(CONTROLLER_IMAGE_TAR)
+	minikube image load $(TAR_IMAGE_DIR)/$(SCHEDULER_IMAGE_TAR)
+	minikube image ls | grep '$(CONTROLLER_IMAGE_NAME)\|$(SCHEDULER_IMAGE_NAME)' --color=auto
+
+.PHONY: local-image-tar
+local-image-tar: local-image
+	docker images | grep '$(CONTROLLER_IMAGE_NAME)\|$(SCHEDULER_IMAGE_NAME)' --color=auto
+	mkdir -p $(TAR_IMAGE_DIR)
+	docker save -o $(TAR_IMAGE_DIR)/$(CONTROLLER_IMAGE_TAR) $(CONTROLLER_IMAGE_NAME)
+	docker save -o $(TAR_IMAGE_DIR)/$(SCHEDULER_IMAGE_TAR) $(SCHEDULER_IMAGE_NAME)
+
 .PHONY: all
 all: build
 
