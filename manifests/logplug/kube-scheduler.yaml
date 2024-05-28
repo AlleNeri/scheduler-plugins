@@ -11,6 +11,7 @@ spec:
   containers:
   - command:
     - kube-scheduler
+    - --v=5
     - --authentication-kubeconfig=/etc/kubernetes/scheduler.conf
     - --authorization-kubeconfig=/etc/kubernetes/scheduler.conf
     - --bind-address=127.0.0.1

@@ -152,14 +152,17 @@ verify:
 clean:
 	rm -rf ./bin
 
-.PHONY: load-local-image-tar
-load-local-image-tar: local-image-tar
+.PHONY: build-load-local-image
+build-load-local-image: build-local-image load-local-image
+
+.PHONY: load-local-image
+load-local-image:
 	minikube image load $(TAR_IMAGE_DIR)/$(CONTROLLER_IMAGE_TAR)
 	minikube image load $(TAR_IMAGE_DIR)/$(SCHEDULER_IMAGE_TAR)
 	minikube image ls | grep '$(CONTROLLER_IMAGE_NAME)\|$(SCHEDULER_IMAGE_NAME)' --color=auto
 
-.PHONY: local-image-tar
-local-image-tar: local-image
+.PHONY: build-local-image
+build-local-image: local-image
 	docker images | grep '$(CONTROLLER_IMAGE_NAME)\|$(SCHEDULER_IMAGE_NAME)' --color=auto
 	mkdir -p $(TAR_IMAGE_DIR)
 	docker save -o $(TAR_IMAGE_DIR)/$(CONTROLLER_IMAGE_TAR) $(CONTROLLER_IMAGE_NAME)
