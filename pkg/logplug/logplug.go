@@ -17,16 +17,17 @@ limitations under the License.
 package logplug
 
 import (
+	"fmt"
 	"context"
-
 	"k8s.io/klog/v2"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"sigs.k8s.io/scheduler-plugins/apis/config"
 )
 
-const Name = "LogPlugin"
+const Name = "LogPlug"
 
 type LogPlugin struct {
 	fh framework.Handle
@@ -89,9 +90,6 @@ func (pl *LogPlugin) Filter(ctx context.Context,
 	return nil
 }
 */
-
-// PreFilter(context.Context, *framework.CycleState, *"k8s.io/api/core/v1".Pod) *framework.Status
-// PreFilter(context.Context, *framework.CycleState, *"k8s.io/api/core/v1".Pod) (*framework.PreFilterResult, *framework.Status)
 
 func (pl *LogPlugin) PreFilter(ctx context.Context,
 	state *framework.CycleState,
