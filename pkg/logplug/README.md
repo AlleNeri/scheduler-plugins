@@ -35,3 +35,8 @@ It contains the following files:
     - the configuration to apply with the `--config` option in the `command` field
     - the log level specified with the `--v` option in the `command` field
 - `logplug-config.yaml`: the configuration file for the plugin. The important part is the one wich enables the plugin in the `profiles` field.
+
+## Add an argument to the plugin
+Following the steps suggested in the [medium article](https://medium.com/@juliorenner123/k8s-creating-a-kube-scheduler-plugin-8a826c486a1) is the way to go.
+Some files are not in the expected path, but the idea is the same.
+An important thing to note is that the scritp `hack/update-codegen.sh` deletes the `/api/scheduling/v1alpha1/zz_generated.deepcopy.go` file and it generates an error than can be solved by restoring the file from the git history for example.

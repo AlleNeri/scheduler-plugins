@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,9 +42,35 @@ func (pl *LogPlugin) Name() string {
 	return Name
 }
 
+// Get args from the LogPluginArgs plugin.
+func getArgs(obj runtime.Object) (*config.LogPlugArgs, error) {
+	if args, ok := obj.(*config.LogPlugArgs); !ok {
+		return nil, fmt.Errorf("want args to be of type LogPluginArgs, got %T", obj)
+	} else {
+		return args, nil
+	}
+}
+
+// Parse the args and get the Timeout value.
+func getTimeoutFromArgs(obj runtime.Object) (int64, error) {
+	if args, err := getArgs(obj); err != nil {
+		return 0, err
+	} else {
+		return args.Timeout, nil
+	}
+}
+
 func New(_ context.Context,
-	_ runtime.Object,
+	obj runtime.Object,
 	fh framework.Handle) (framework.Plugin, error) {
+	// get the Timeout from the args
+	if timeRangeInMinutes, err := getTimeoutFromArgs(obj); err != nil {
+		// return nil, err
+		klog.V(4).Infof("Error getting args: %v", err)
+	} else {
+		klog.V(4).Infof("Detected Timeout: %d", timeRangeInMinutes)
+	}
+
 	lp := LogPlugin{
 		fh: fh,
 		podLister: fh.SharedInformerFactory().Core().V1().Pods().Lister(),
@@ -103,7 +129,9 @@ func (pl *LogPlugin) PreFilter(ctx context.Context,
 		for _, node := range allNodes {
 			
 			// Log the resources of the node.
-			klog.V(4).Infof("Node %s had memory: %d", node.Node().GetName(), node.Allocatable.Memory)
+			klog.V(4).Infof("Node %s had memory: %d", node.Node().GetName(), node.Requested.Memory)
+			// node.Allocatable.MilliCPU
+			// node.Allocatable.Memory
 
 			// Log the number and name of pods on each node.
 			pods := node.Pods
@@ -121,6 +149,10 @@ func (pl *LogPlugin) PreFilter(ctx context.Context,
 				// Log all pod resources on the node.
 				for _, container := range pod.Pod.Spec.Containers {
 					klog.V(4).Infof("\t\tcontainer: %s, resources: %s", container.Name, container.Resources.Requests.Memory().String())
+					// container.Resources.Limits
+					// container.Resources.Limits.Cpu()
+					// container.Resources.Requests.Storage()
+					// .as...
 				}
 			}
 		}
