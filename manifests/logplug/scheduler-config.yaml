@@ -10,3 +10,5 @@ profiles:
       - name: LogPlug
   pluginConfig:
   - name: LogPlug
+    args:
+      timeout: 13

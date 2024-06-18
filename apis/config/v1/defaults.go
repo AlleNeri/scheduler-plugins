@@ -102,6 +102,10 @@ var (
 	DefaultSySchedProfileNamespace = "default"
 	// DefaultSySchedProfileName is the name of the default syscall profile CR for SySched plugin
 	DefaultSySchedProfileName = "all-syscalls"
+
+	// Defaults for LogPlug
+	// DefaultLogPlugTimeout is the default timeout for LogPlug
+	DefaultLogPlugTimeout = int64(42)
 )
 
 // SetDefaults_CoschedulingArgs sets the default parameters for Coscheduling plugin.
@@ -248,5 +252,12 @@ func SetDefaults_SySchedArgs(obj *SySchedArgs) {
 
 	if obj.DefaultProfileName == nil {
 		obj.DefaultProfileName = &DefaultSySchedProfileName
+	}
+}
+
+// SetDefaults_LogPlugArgs sets the default parameters for LogPlugArgs plugin.
+func SetDefaults_LogPlugArgs(obj *LogPlugArgs) {
+	if obj.Timeout == nil {
+		obj.Timeout = &DefaultLogPlugTimeout
 	}
 }

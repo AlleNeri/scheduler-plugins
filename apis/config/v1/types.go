@@ -263,3 +263,13 @@ type SySchedArgs struct {
 	// CR name of the default profile for all system calls
 	DefaultProfileName *string `json:"defaultProfileName,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:defaulter-gen=true
+
+type LogPlugArgs struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// TimeRangeInMinutes used to test the plugin argument
+	Timeout *int64 `json:"timeout,omitempty"`
+}

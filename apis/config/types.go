@@ -265,3 +265,12 @@ type SySchedArgs struct {
 	// CR name of the default profile for all system calls
 	DefaultProfileName string
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type LogPlugArgs struct {
+	metav1.TypeMeta
+
+	// Timeout in seconds for the log plugin
+	Timeout int64
+}
