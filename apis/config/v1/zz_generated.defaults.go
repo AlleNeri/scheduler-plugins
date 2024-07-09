@@ -33,6 +33,7 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&LoadVariationRiskBalancingArgs{}, func(obj interface{}) {
 		SetObjectDefaults_LoadVariationRiskBalancingArgs(obj.(*LoadVariationRiskBalancingArgs))
 	})
+	scheme.AddTypeDefaultingFunc(&LogPlugArgs{}, func(obj interface{}) { SetObjectDefaults_LogPlugArgs(obj.(*LogPlugArgs)) })
 	scheme.AddTypeDefaultingFunc(&LowRiskOverCommitmentArgs{}, func(obj interface{}) { SetObjectDefaults_LowRiskOverCommitmentArgs(obj.(*LowRiskOverCommitmentArgs)) })
 	scheme.AddTypeDefaultingFunc(&NetworkOverheadArgs{}, func(obj interface{}) { SetObjectDefaults_NetworkOverheadArgs(obj.(*NetworkOverheadArgs)) })
 	scheme.AddTypeDefaultingFunc(&NodeResourceTopologyMatchArgs{}, func(obj interface{}) {
@@ -45,7 +46,6 @@ func RegisterDefaults(scheme *runtime.Scheme) error {
 	scheme.AddTypeDefaultingFunc(&SySchedArgs{}, func(obj interface{}) { SetObjectDefaults_SySchedArgs(obj.(*SySchedArgs)) })
 	scheme.AddTypeDefaultingFunc(&TargetLoadPackingArgs{}, func(obj interface{}) { SetObjectDefaults_TargetLoadPackingArgs(obj.(*TargetLoadPackingArgs)) })
 	scheme.AddTypeDefaultingFunc(&TopologicalSortArgs{}, func(obj interface{}) { SetObjectDefaults_TopologicalSortArgs(obj.(*TopologicalSortArgs)) })
-	scheme.AddTypeDefaultingFunc(&LogPlugArgs{}, func(obj interface{}) { SetObjectDefaults_LogPlugArgs(obj.(*LogPlugArgs)) })
 	return nil
 }
 
@@ -55,6 +55,10 @@ func SetObjectDefaults_CoschedulingArgs(in *CoschedulingArgs) {
 
 func SetObjectDefaults_LoadVariationRiskBalancingArgs(in *LoadVariationRiskBalancingArgs) {
 	SetDefaults_LoadVariationRiskBalancingArgs(in)
+}
+
+func SetObjectDefaults_LogPlugArgs(in *LogPlugArgs) {
+	SetDefaults_LogPlugArgs(in)
 }
 
 func SetObjectDefaults_LowRiskOverCommitmentArgs(in *LowRiskOverCommitmentArgs) {
@@ -87,8 +91,4 @@ func SetObjectDefaults_TargetLoadPackingArgs(in *TargetLoadPackingArgs) {
 
 func SetObjectDefaults_TopologicalSortArgs(in *TopologicalSortArgs) {
 	SetDefaults_TopologicalSortArgs(in)
-}
-
-func SetObjectDefaults_LogPlugArgs(in *LogPlugArgs) {
-	SetDefaults_LogPlugArgs(in)
 }

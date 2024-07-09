@@ -19,6 +19,7 @@ package logplug
 import (
 	"fmt"
 	"context"
+
 	"k8s.io/klog/v2"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -124,41 +125,74 @@ func (pl *LogPlugin) PreFilter(ctx context.Context,
 	// Log the name of the nodes from the framework Handle.
 	nodeLister := pl.fh.SnapshotSharedLister().NodeInfos()
 	allNodes, err := nodeLister.List()
-	klog.V(4).Infof("Got %d nodes", len(allNodes))
+	// klog.V(4).Infof("Got %d nodes", len(allNodes))
+	var records []CsvRecord
+	globalPodNum := 0
 	if err == nil {
-		for _, node := range allNodes {
-			
+		for nodeNum, node := range allNodes {
+			var csvBin CsvBin
+
 			// Log the resources of the node.
-			klog.V(4).Infof("Node %s had memory: %d", node.Node().GetName(), node.Requested.Memory)
-			// node.Allocatable.MilliCPU
-			// node.Allocatable.Memory
+			// klog.V(4).Infof("Node %s had memory: %d", node.Node().GetName(), node.Requested.Memory)
+			csvBin.memory = node.Allocatable.Memory
+			csvBin.cpu = node.Allocatable.MilliCPU
+			for key, value := range node.Node().Labels {
+				csvBin.labels = append(csvBin.labels, key + "=" + value)
+			}
 
 			// Log the number and name of pods on each node.
 			pods := node.Pods
-			klog.V(4).Infof("Node %s had %d pods(uid: %s)", node.Node().GetName(), len(pods), node.Node().GetUID())
+			// klog.V(4).Infof("Node %s had %d pods(uid: %s)", node.Node().GetName(), len(pods), node.Node().GetUID())
 			for _, pod := range pods {
-				klog.V(4).Infof("\tname: %s (uid: %s)", pod.Pod.GetName(), pod.Pod.GetUID())
+				var csvPod CsvPod
+				csvPod.bin = nodeNum
+				// klog.V(4).Infof("\tname: %s (uid: %s)", pod.Pod.GetName(), pod.Pod.GetUID())
 
 				// list all labels of the pod
-				labels := ""
 				for k, v := range pod.Pod.GetLabels() {
-					labels += k + ":" + v + " "
+					csvPod.labels = append(csvPod.labels, k + "=" + v)
 				}
-				klog.V(4).Infof("\t\tlabels: %s", labels)
+				// klog.V(4).Infof("\t\tlabels: %s", labels)
+
+				// list all affinity of the pod
+				for _, affinity := range pod.Pod.Spec.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+					for _, term := range affinity.PodAffinityTerm.LabelSelector.MatchLabels {
+						csvPod.affinity = append(csvPod.affinity, term)
+					}
+				}
+
+				// list all anti-affinity of the pod
+				for _, antiAffinity := range pod.Pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
+					for _, term := range antiAffinity.PodAffinityTerm.LabelSelector.MatchLabels {
+						csvPod.antiaffinity = append(csvPod.antiaffinity, term)
+					}
+				}
+
+				// get pod priority
+				csvPod.priority = *pod.Pod.Spec.Priority
 
 				// Log all pod resources on the node.
 				for _, container := range pod.Pod.Spec.Containers {
-					klog.V(4).Infof("\t\tcontainer: %s, resources: %s", container.Name, container.Resources.Requests.Memory().String())
+					// klog.V(4).Infof("\t\tcontainer: %s, resources: %s", container.Name, container.Resources.Requests.Memory().String())
+					csvPod.memory = container.Resources.Requests.Memory().Value()
+					csvPod.cpu = container.Resources.Requests.Cpu().MilliValue()
 					// container.Resources.Limits
 					// container.Resources.Limits.Cpu()
 					// container.Resources.Requests.Storage()
 					// .as...
 				}
+
+				records = append(records, csvPod)
+
+				globalPodNum++
 			}
+
+			records = append(records, csvBin)
 		}
 	}
+
+	printCsv(records)
 	
-	// return nil
 	return nil, framework.NewStatus(framework.Success, "")
 }
 
