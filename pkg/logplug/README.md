@@ -40,3 +40,10 @@ It contains the following files:
 Following the steps suggested in the [medium article](https://medium.com/@juliorenner123/k8s-creating-a-kube-scheduler-plugin-8a826c486a1) is the way to go.
 Some files are not in the expected path, but the idea is the same.
 An important thing to note is that the scritp `hack/update-codegen.sh` deletes the `/api/scheduling/v1alpha1/zz_generated.deepcopy.go` file and it generates an error than can be solved by restoring the file from the git history for example.
+
+## Run python script
+To run a python script in the plugin some changes are needed in the `Dockerfile`.
+The `python3` package is needed to run the script.
+The script can be moved to the image with the `COPY` command in the `Dockerfile`.
+In this case the script is in the `/scheduler-plugin` directory which is entirely copied to the first stage of the image; to get the script in the final image a `COPY --from=0` command is needed. \
+The python script is called directory from the plugin code with the `os/exec` package.

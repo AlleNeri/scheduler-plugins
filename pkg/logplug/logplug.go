@@ -17,6 +17,7 @@ limitations under the License.
 package logplug
 
 import (
+	"os/exec"
 	"fmt"
 	"context"
 	"k8s.io/klog/v2"
@@ -156,6 +157,16 @@ func (pl *LogPlugin) PreFilter(ctx context.Context,
 				}
 			}
 		}
+	}
+
+	// Run a python script
+	filePath := "/tmp/test.py"
+	cmd := exec.Command("python", filePath)
+	stdout, err := cmd.Output()
+	if err != nil {
+		klog.V(4).Infof("Error running python script: %v", err)
+	} else {
+		klog.V(4).Infof("Output: %s", stdout)
 	}
 	
 	// return nil

@@ -24,7 +24,13 @@ RUN RELEASE_VERSION=${RELEASE_VERSION} make build-scheduler.$ARCH
 
 FROM $ALPINE_BASE_IMAGE:3.16
 
+# Install python3
+RUN apk update && apk add --no-cache python3
+# Symlink python3 to python
+RUN ln -sf python3 /usr/bin/python
+
 COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/bin/kube-scheduler /bin/kube-scheduler
+COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/test.py /tmp/test.py
 
 WORKDIR /bin
 CMD ["kube-scheduler"]
