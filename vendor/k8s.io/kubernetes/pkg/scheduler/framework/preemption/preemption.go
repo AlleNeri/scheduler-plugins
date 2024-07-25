@@ -346,6 +346,7 @@ func (ev *Evaluator) SelectCandidate(ctx context.Context, candidates []Candidate
 // - Evict the victim pods
 // - Reject the victim pods if they are in waitingPod map
 // - Clear the low-priority pods' nominatedNodeName status if needed
+// The execution of this method is parallelized.
 func (ev *Evaluator) prepareCandidate(ctx context.Context, c Candidate, pod *v1.Pod, pluginName string) *framework.Status {
 	fh := ev.Handler
 	cs := ev.Handler.ClientSet()
@@ -353,8 +354,11 @@ func (ev *Evaluator) prepareCandidate(ctx context.Context, c Candidate, pod *v1.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	logger := klog.FromContext(ctx)
+	// Because of the parallelization, an error channel is used to notify the main thread
 	errCh := parallelize.NewErrorChannel()
+	// The preempt logic executed in parallel on each victim pod
 	preemptPod := func(index int) {
+		// Get the victim pod from the candidate's victims list
 		victim := c.Victims().Pods[index]
 		// If the victim is a WaitingPod, send a reject message to the PermitPlugin.
 		// Otherwise we should delete the victim.
@@ -363,23 +367,24 @@ func (ev *Evaluator) prepareCandidate(ctx context.Context, c Candidate, pod *v1.
 			logger.V(2).Info("Preemptor pod rejected a waiting pod", "preemptor", klog.KObj(pod), "waitingPod", klog.KObj(victim), "node", c.Name())
 		} else {
 			if feature.DefaultFeatureGate.Enabled(features.PodDisruptionConditions) {
+				// Create a condition to indicate that the pod is being preempted.
 				condition := &v1.PodCondition{
-					Type:    v1.DisruptionTarget,
-					Status:  v1.ConditionTrue,
-					Reason:  v1.PodReasonPreemptionByScheduler,
-					Message: fmt.Sprintf("%s: preempting to accommodate a higher priority pod", pod.Spec.SchedulerName),
+					Type:    v1.DisruptionTarget,				// DisruptionTarget indicates that the pod is disrupted
+					Status:  v1.ConditionTrue,					// ConditionTrue indicates that the pod is in a valid state
+					Reason:  v1.PodReasonPreemptionByScheduler,	// PodReasonPreemptionByScheduler indicates that the pod is preempted by the scheduler
+					Message: fmt.Sprintf("%s: preempting to accommodate a higher priority pod", pod.Spec.SchedulerName),	// Message indicates the reason for the condition
 				}
 				newStatus := pod.Status.DeepCopy()
-				updated := apipod.UpdatePodCondition(newStatus, condition)
+				updated := apipod.UpdatePodCondition(newStatus, condition)	// It's true only if the condition is CHANGED
 				if updated {
-					if err := util.PatchPodStatus(ctx, cs, victim, newStatus); err != nil {
+					if err := util.PatchPodStatus(ctx, cs, victim, newStatus); err != nil {	// Patch the changes to the pod status
 						logger.Error(err, "Could not add DisruptionTarget condition due to preemption", "pod", klog.KObj(victim), "preemptor", klog.KObj(pod))
 						errCh.SendErrorWithCancel(err, cancel)
 						return
 					}
 				}
 			}
-			if err := util.DeletePod(ctx, cs, victim); err != nil {
+			if err := util.DeletePod(ctx, cs, victim); err != nil {	// Delete the pod
 				logger.Error(err, "Preempted pod", "pod", klog.KObj(victim), "preemptor", klog.KObj(pod))
 				errCh.SendErrorWithCancel(err, cancel)
 				return
