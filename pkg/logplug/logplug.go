@@ -172,15 +172,9 @@ func (pl *LogPlugin) PreFilter(ctx context.Context,
 				csvPod.priority = *pod.Pod.Spec.Priority
 
 				// Log all pod resources on the node.
-				for _, container := range pod.Pod.Spec.Containers {
-					// klog.V(4).Infof("\t\tcontainer: %s, resources: %s", container.Name, container.Resources.Requests.Memory().String())
-					csvPod.memory = container.Resources.Requests.Memory().Value()
-					csvPod.cpu = container.Resources.Requests.Cpu().MilliValue()
-					// container.Resources.Limits
-					// container.Resources.Limits.Cpu()
-					// container.Resources.Requests.Storage()
-					// .as...
-				}
+				podResource := computePodResourceRequest(pod.Pod)
+				csvPod.memory = podResource.Memory
+				csvPod.cpu = podResource.MilliCPU
 
 				records = append(records, csvPod)
 
@@ -214,4 +208,23 @@ func (pl *LogPlugin) RemovePod(ctx context.Context,
 	podToRemove *framework.PodInfo,
 	nodeInfo *framework.NodeInfo) *framework.Status {
 	return nil
+}
+
+func computePodResourceRequest(pod *v1.Pod) *framework.Resource {
+	result := &framework.Resource{}
+	for _, container := range pod.Spec.Containers {
+		result.Add(container.Resources.Requests)
+	}
+
+	// take max_resource(sum_pod, any_init_container)
+	for _, container := range pod.Spec.InitContainers {
+		result.SetMaxResource(container.Resources.Requests)
+	}
+
+	// If Overhead is being utilized, add to the total requests for the pod
+	if pod.Spec.Overhead != nil {
+		result.Add(pod.Spec.Overhead)
+	}
+
+	return result
 }
