@@ -34,6 +34,18 @@ GO_BASE_IMAGE?=golang
 VERSION=$(shell echo $(RELEASE_VERSION) | awk -F - '{print $$2}')
 VERSION:=$(or $(VERSION),v0.0.$(shell date +%Y%m%d))
 
+TAR_IMAGE_DIR=tar
+CONTROLLER_IMAGE_NAME=localhost:5000/scheduler-plugins/controller
+SCHEDULER_IMAGE_NAME=localhost:5000/scheduler-plugins/kube-scheduler
+CONTROLLER_IMAGE_TAR=controller.tar
+SCHEDULER_IMAGE_TAR=kube-scheduler.tar
+KUBE_SCHED_FILE=kube-scheduler.yaml
+SCHED_CONFIG_FILE=scheduler-config.yaml
+MANIFESTS_DIR=manifests/optimizedpreemption
+MINIKUBE_PROFILE=minikube
+KUBE_SCHED_LOCATION=/etc/kubernetes/manifests
+SCHED_CONFIG_LOCATION=/etc/kubernetes
+
 .PHONY: all
 all: build
 
@@ -139,3 +151,26 @@ verify:
 .PHONY: clean
 clean:
 	rm -rf ./bin
+
+.PHONY: build-load-local-image
+build-load-local-image: build-local-image load-local-image
+
+.PHONY: load-local-image
+load-local-image:
+	minikube image load $(TAR_IMAGE_DIR)/$(CONTROLLER_IMAGE_TAR)
+	minikube image load $(TAR_IMAGE_DIR)/$(SCHEDULER_IMAGE_TAR)
+	minikube image ls | grep '$(CONTROLLER_IMAGE_NAME)\|$(SCHEDULER_IMAGE_NAME)' --color=auto
+
+.PHONY: build-local-image
+build-local-image: local-image
+	docker images | grep '$(CONTROLLER_IMAGE_NAME)\|$(SCHEDULER_IMAGE_NAME)' --color=auto
+	mkdir -p $(TAR_IMAGE_DIR)
+	docker save -o $(TAR_IMAGE_DIR)/$(CONTROLLER_IMAGE_TAR) $(CONTROLLER_IMAGE_NAME)
+	docker save -o $(TAR_IMAGE_DIR)/$(SCHEDULER_IMAGE_TAR) $(SCHEDULER_IMAGE_NAME)
+
+.PHONY: copy-config-files
+copy-config-files:
+	minikube cp $(MANIFESTS_DIR)/$(KUBE_SCHED_FILE) $(MINIKUBE_PROFILE):$(KUBE_SCHED_LOCATION)/$(KUBE_SCHED_FILE)
+	minikube cp $(MANIFESTS_DIR)/$(SCHED_CONFIG_FILE) $(MINIKUBE_PROFILE):$(SCHED_CONFIG_LOCATION)/$(SCHED_CONFIG_FILE)
+	minikube kubectl -- get pod -n kube-system | grep kube-scheduler --color=auto
+	minikube kubectl -- get pods -l component=kube-scheduler -n kube-system -o=jsonpath="{.items[0].spec.containers[0].image}{'\n'}"

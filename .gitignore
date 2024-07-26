@@ -6,6 +6,7 @@
 bin
 testbin/*
 hack/tools/bin/*
+tar/*
 
 # macOS
 .DS_Store

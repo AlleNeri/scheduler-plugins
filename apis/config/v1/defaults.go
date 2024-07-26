@@ -102,6 +102,10 @@ var (
 	DefaultSySchedProfileNamespace = "default"
 	// DefaultSySchedProfileName is the name of the default syscall profile CR for SySched plugin
 	DefaultSySchedProfileName = "all-syscalls"
+
+	// Default for OptimizedPreemption
+	// DefaultOptimizedPreemptionTimeout is the default timeout for optimized preemption
+	DefaultOptimizedPreemptionTimeout = int64(10)
 )
 
 // SetDefaults_CoschedulingArgs sets the default parameters for Coscheduling plugin.
@@ -248,5 +252,12 @@ func SetDefaults_SySchedArgs(obj *SySchedArgs) {
 
 	if obj.DefaultProfileName == nil {
 		obj.DefaultProfileName = &DefaultSySchedProfileName
+	}
+}
+
+// SetDefaults_OptimizedPreemptionArgs sets the default parameters for OptimizedPreemptionArgs plugin.
+func SetDefaults_LogPlugArgs(obj *OptimizedPreemptionArgs) {
+	if obj.Timeout == nil {
+		obj.Timeout = &DefaultOptimizedPreemptionTimeout
 	}
 }
