@@ -6,6 +6,11 @@ import (
 	"context"
 	"k8s.io/klog/v2"
 	"k8s.io/api/core/v1"
+
+	/*
+	"os"
+	"bufio"
+	*/
 )
 
 const Name = "OptimizedPreemption"
@@ -29,7 +34,7 @@ func New(_ context.Context,
 	timeout, err := getTimeoutFromArgs(obj)
 	if err != nil {
 		// This should not happen because there is a default value for Timeout.
-		klog.V(4).ErrorS(err, "failed to get timeout from args")
+		klog.V(4).Info("failed to get timeout from args, using default value")
 		return nil, err
 	}
 
@@ -46,6 +51,34 @@ func (op *OptimizedPreemption) PostFilter(_ context.Context,
 	state *framework.CycleState,
 	pod *v1.Pod,
 	m framework.NodeToStatusMap) (*framework.PostFilterResult, *framework.Status) {
-	// Implement the preemption logic here.
+	// Get the information about the cluster state.
+	NodeLister := op.fh.SnapshotSharedLister().NodeInfos()
+	path := "/tmp/cluster.csv"
+	printClusterState(NodeLister, path, pod)
+
+	// TEST: Read the file and log the content.
+	// readAndLog(path)
+
 	return nil, nil
 }
+
+/*
+func readAndLog(path string) {
+	// Read the file and log the content.
+	file, err := os.Open(path)
+	defer file.Close()
+	if err != nil {
+		klog.V(4).Info("failed to open file")
+		return
+	}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		klog.V(4).Info(scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		klog.V(4).Info("failed to read file")
+	}
+}
+*/
