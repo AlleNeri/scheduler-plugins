@@ -13,7 +13,7 @@
 # limitations under the License.
 ARG ARCH
 ARG GO_BASE_IMAGE=golang
-ARG ALPINE_BASE_IMAGE=$ARCH/alpine
+ARG UBUNTU_BASE_IMAGE=ubuntu
 FROM $GO_BASE_IMAGE:1.21
 
 WORKDIR /go/src/sigs.k8s.io/scheduler-plugins
@@ -22,9 +22,21 @@ ARG ARCH
 ARG RELEASE_VERSION
 RUN RELEASE_VERSION=${RELEASE_VERSION} make build-scheduler.$ARCH
 
-FROM $ALPINE_BASE_IMAGE:3.16
+FROM $UBUNTU_BASE_IMAGE:22.04
+
+RUN apt-get update && \
+	apt-get install -y python3 python3-pip python3-venv
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+ENV SCRIPT_PATH=/tmp/script
 
 COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/bin/kube-scheduler /bin/kube-scheduler
+RUN mkdir -p $SCRIPT_PATH
+COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/script/* $SCRIPT_PATH/
+
+RUN python3 -m venv $SCRIPT_PATH/venv
+# RUN $SCRIPT_PATH/venv/bin/pip install --upgrade pip
+RUN $SCRIPT_PATH/venv/bin/pip install ortools	# -r $SCRIPT_PATH/requirements.txt
 
 WORKDIR /bin
 CMD ["kube-scheduler"]

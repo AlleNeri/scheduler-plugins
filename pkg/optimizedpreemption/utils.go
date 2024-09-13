@@ -6,8 +6,29 @@ import (
 	"fmt"
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
+	"encoding/json"
 )
 
+/** get data from the script **/
+type PodWhere struct {
+	Where []uint `json:"where"`
+}
+
+type Data struct {
+	OldPod PodWhere `json:"old_pods"`
+	NewPod PodWhere `json:"new_pods"`
+}
+
+func parseScriptOutput(output string) (Data, error) {
+	var data Data
+	if err := json.Unmarshal([]byte(output), &data); err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
+
+/** get args for the plugin **/
 // Get args from the OptimizedPreemptionArgs plugin.
 func getArgs(obj runtime.Object) (*config.OptimizedPreemptionArgs, error) {
 	if args, ok := obj.(*config.OptimizedPreemptionArgs); !ok {
@@ -26,6 +47,8 @@ func getTimeoutFromArgs(obj runtime.Object) (int64, error) {
 	}
 }
 
+
+/** cluster info to csv **/
 // Get the pod's resource requests.
 func computePodResourceRequest(pod *v1.Pod) *framework.Resource {
 	result := &framework.Resource{}
@@ -47,23 +70,28 @@ func computePodResourceRequest(pod *v1.Pod) *framework.Resource {
 }
 
 // Print the cluster state in csv.
-func printClusterState(NodeLister framework.NodeInfoLister, path string, unschedulablePod *v1.Pod) {
+func printClusterState(NodeLister framework.NodeInfoLister, path string, unschedulablePod *v1.Pod) (map[uint]string, map[uint]*v1.Pod) {
 	// Get the info of the cluster.
 	allNodes, err := NodeLister.List()
 	var record []CsvRecord
 	var globalPodNumb uint = 0
+	nodeMap := make(map[uint]string)
+	podMap := make(map[uint]*v1.Pod)
 	if err == nil {
 		for nodeNumb, node := range allNodes {
 			var csvBin CsvBin
 
 			csvBin.index = uint(nodeNumb) + 1
+			nodeMap[uint(nodeNumb) + 1] = node.Node().Name
 
 			// Get the info of the node.
 			csvBin.memory = node.Allocatable.Memory
 			csvBin.cpu = node.Allocatable.MilliCPU
+			/* This peace of code returns an error. TODO: Fix it.
 			for key, value := range node.Node().Labels {
 				csvBin.labels = append(csvBin.labels, key + "=" + value)
 			}
+			*/
 
 			record = append(record, csvBin)
 
@@ -74,6 +102,7 @@ func printClusterState(NodeLister framework.NodeInfoLister, path string, unsched
 
 				csvPod.index = globalPodNumb
 				csvPod.bin = uint(nodeNumb) + 1
+				podMap[globalPodNumb] = pod.Pod
 
 				csvPod.priority = *pod.Pod.Spec.Priority
 
@@ -103,6 +132,7 @@ func printClusterState(NodeLister framework.NodeInfoLister, path string, unsched
 	}
 
 	// Get the info of the unschedulable pod.
+	/**		IMPORTANT: the unschedulable pod is the last pod in the csv.		**/
 	var csvPod CsvPod
 	csvPod.index = globalPodNumb
 	csvPod.bin = 0	// Bin are indexed from 1; so 0 means unschedulable pod.
@@ -113,4 +143,7 @@ func printClusterState(NodeLister framework.NodeInfoLister, path string, unsched
 
 	// Print the csv.
 	printCsv(record, path)
+
+	// Return the node and pod map. They will be used to parse the script output.
+	return nodeMap, podMap
 }

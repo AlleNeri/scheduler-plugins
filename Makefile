@@ -172,5 +172,5 @@ build-local-image: local-image
 copy-config-files:
 	minikube cp $(MANIFESTS_DIR)/$(KUBE_SCHED_FILE) $(MINIKUBE_PROFILE):$(KUBE_SCHED_LOCATION)/$(KUBE_SCHED_FILE)
 	minikube cp $(MANIFESTS_DIR)/$(SCHED_CONFIG_FILE) $(MINIKUBE_PROFILE):$(SCHED_CONFIG_LOCATION)/$(SCHED_CONFIG_FILE)
-	minikube kubectl -- get pod -n kube-system | grep kube-scheduler --color=auto
 	minikube kubectl -- get pods -l component=kube-scheduler -n kube-system -o=jsonpath="{.items[0].spec.containers[0].image}{'\n'}"
+	minikube kubectl -- get pod -n kube-system | grep kube-scheduler --color=auto
