@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# Required cli tools: minikube, jq, bc(, echo, base64, tr, sort, sed)
+
+# Ottieni i pod in formato JSON
+pods=$(minikube kubectl -- get pods --all-namespaces -o json)
+
+# Ottieni la lista dei nodi
+nodes=$(minikube kubectl -- get nodes -o json)
+
+# Inizializza gli array per memorizzare le risorse per ogni nodo
+declare -A cpu_requests
+declare -A cpu_limits
+declare -A memory_requests
+declare -A memory_limits
+declare -A cpu_total
+declare -A memory_total
+declare -A cpu_usage
+declare -A memory_usage
+
+# Inizializza tutte le risorse a zero
+for node in $(echo "$nodes" | jq -r '.items[].metadata.name'); do
+	cpu_total[$node]=$(echo "$nodes" | jq -r --arg NODE "$node" '.items[] | select(.metadata.name==$NODE) | .status.allocatable.cpu' | sed 's/m//')
+    memory_total[$node]=$(echo "$nodes" | jq -r --arg NODE "$node" '.items[] | select(.metadata.name==$NODE) | .status.allocatable.memory' | sed 's/Ki//')
+
+    # Converti memoria totale da Ki a Mi e CPU da cores a millicores
+    memory_total[$node]=$(echo "${memory_total[$node]} / 1024" | bc)
+	cpu_total[$node]=$(echo "${cpu_total[$node]} * 1000" | bc)
+
+	cpu_requests[$node]=0
+    cpu_limits[$node]=0
+    memory_requests[$node]=0
+    memory_limits[$node]=0
+
+    # Ottieni uso attuale di CPU e memoria
+    cpu_usage[$node]=$(minikube kubectl -- top node "$node" --no-headers | awk '{print $2}' | sed 's/m//')
+    memory_usage[$node]=$(minikube kubectl -- top node "$node" --no-headers | awk '{print $4}' | sed 's/Mi//')
+done
+
+# Somma le richieste e i limiti per ogni nodo
+for node in "${!cpu_total[@]}"; do
+    for pod in $(echo "$pods" | jq -r --arg NODE "$node" '.items[] | select(.spec.nodeName==$NODE) | @base64'); do
+        _jq() {
+            echo "$pod" | base64 --decode | jq -r "$1"
+        }
+        for container in $(_jq '.spec.containers[] | @base64'); do
+            _jq_container() {
+                echo "$container" | base64 --decode | jq -r "$1"
+            }
+            cpu_request=$(_jq_container '.resources.requests.cpu // "0"')
+            cpu_limit=$(_jq_container '.resources.limits.cpu // "0"')
+            memory_request=$(_jq_container '.resources.requests.memory // "0"')
+            memory_limit=$(_jq_container '.resources.limits.memory // "0"')
+
+            # Converti CPU (millicores) e memoria (Mi) in valori numerici
+            cpu_requests[$node]=$(echo "${cpu_requests[$node]} + ${cpu_request%m}" | bc)
+
+			if [[ "$cpu_limit" == "0" || -z "$cpu_limit" ]]; then
+                cpu_limits[$node]=$(echo "${cpu_limits[$node]} + ${cpu_request%m}" | bc)
+            else
+                cpu_limits[$node]=$(echo "${cpu_limits[$node]} + ${cpu_limit%m}" | bc)
+            fi
+
+            memory_requests[$node]=$(echo "${memory_requests[$node]} + ${memory_request%Mi}" | bc)
+
+			if [[ "$memory_limit" == "0" || -z "$memory_limit" ]]; then
+                memory_limits[$node]=$(echo "${memory_limits[$node]} + ${memory_request%Mi}" | bc)
+            else
+                memory_limits[$node]=$(echo "${memory_limits[$node]} + ${memory_limit%Mi}" | bc)
+            fi
+        done
+    done
+done
+
+# Stampa il risultato per ogni nodo
+echo -e "\t\tCPU (m)\t\t\t\t\tMemory (Mi)"
+echo -e "Nodo\t\tRequests - Limits\tUsage / Total\tRequests - Limits\tUsage / Total"
+for node in $(echo "${!cpu_total[@]}" | tr ' ' '\n' | sort); do
+    echo -e "$node\t${cpu_requests[$node]} - ${cpu_limits[$node]}\t\t${cpu_usage[$node]} / ${cpu_total[$node]}\t${memory_requests[$node]} - ${memory_limits[$node]}\t\t${memory_usage[$node]} / ${memory_total[$node]}"
+done
