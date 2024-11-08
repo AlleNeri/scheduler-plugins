@@ -26,11 +26,12 @@ def get_new_pods(pods: dict, bins: dict, x: dict, o, solver: str) -> dict:
 
 
 def print_pods(pods, filter):
-    for i in filter:
+    for original_i in filter:
+        i = filter.index(original_i)
         n0 = 10
         n1 = 15
         n2 = 20
-        print(f"{'Pod ' + str(i):<{n0}} {'ram:' + str(pods['ram'][i]):<{n0}} {'cpu:' + str(pods['cpu'][i]):<{n0}} {'priority: ' + str(pods['priority'][i]):<{n1}} {'where: ' + str(pods['where'][i]):<{n1}} {'affinity: ' + str(pods['affinity'][i]):<{n2}} {'anti-affinity: ' + str(pods['anti_affinity'][i])}")
+        print(f"{'Pod ' + str(original_i):<{n0}} {'ram:' + str(pods['ram'][i]):<{n0}} {'cpu:' + str(pods['cpu'][i]):<{n0}} {'priority: ' + str(pods['priority'][i]):<{n1}} {'where: ' + str(pods['where'][i]):<{n1}} {'affinity: ' + str(pods['affinity'][i]):<{n2}} {'anti-affinity: ' + str(pods['anti_affinity'][i])}")
 
 def print_ratio(bins, pods):
     '''Print the ratio for bins and pods'''
@@ -79,6 +80,7 @@ def generate_example(config_for_random: dict, kind: str = 'complex', seed = None
         print(f"Generating example of kind: {kind} and seed: {seed}")
     bins = {}
     pods = {}
+    original_pods = {}
     if kind == 'complex':
         bins, pods = conv.csv_to_internal("benchmark/complex.csv")
     elif kind == 'simple':
@@ -89,6 +91,70 @@ def generate_example(config_for_random: dict, kind: str = 'complex', seed = None
         bins, pods = gen.generate_random(seed, config_for_random)
     elif kind == 'custom':
         bins, pods = conv.csv_to_internal(csv_path)
+        bins, pods, original_pods = adapt_for_kube_system_namespace(bins, pods)
     else:
         raise Exception(f"Not a possible kind of example, recived `{kind}`")
-    return bins, pods
+    return bins, pods, original_pods
+
+def adapt_for_kube_system_namespace(bins, pods):
+    for i in pods['index']:
+        where = pods['where'][i]
+        if pods['namespace'][i] == 'kube-system':
+            bins['ram'][where-1] -= pods['ram'][i]
+            bins['cpu'][where-1] -= pods['cpu'][i]
+
+    new_pods = {}
+    new_pods["index"] = []
+    new_pods["ram"] = []
+    new_pods["cpu"] = []
+    new_pods["where"] = []
+    new_pods["priority"] = []
+    new_pods["affinity"] = []
+    new_pods["anti_affinity"] = []
+    new_pods["namespace"] = []
+
+    count = 0
+    for i in pods['index']:
+        if pods['namespace'][i] != 'kube-system':
+            new_pods["index"].append(count)
+            new_pods["ram"].append(pods["ram"][i])
+            new_pods["cpu"].append(pods["cpu"][i])
+            new_pods["where"].append(pods["where"][i])
+            new_pods["priority"].append(pods["priority"][i])
+            new_pods["affinity"].append(pods["affinity"][i])
+            new_pods["anti_affinity"].append(pods["anti_affinity"][i])
+            new_pods["namespace"].append(pods["namespace"][i])
+            count += 1
+
+    return bins, new_pods, pods
+
+def update_new_pods(new_pods, original_pods):
+    updated_pods = {}
+    updated_pods["index"] = []
+    updated_pods["ram"] = []
+    updated_pods["cpu"] = []
+    updated_pods["where"] = []
+    updated_pods["priority"] = []
+    updated_pods["affinity"] = []
+    updated_pods["anti_affinity"] = []
+    updated_pods["namespace"] = []
+
+    low_count = 0
+    count = 0
+    for i in original_pods['index']:
+        updated_pods["index"].append(count)
+        updated_pods["ram"].append(original_pods["ram"][i])
+        updated_pods["cpu"].append(original_pods["cpu"][i])
+        updated_pods["priority"].append(original_pods["priority"][i])
+        updated_pods["affinity"].append(original_pods["affinity"][i])
+        updated_pods["anti_affinity"].append(original_pods["anti_affinity"][i])
+        updated_pods["namespace"].append(original_pods["namespace"][i])
+
+        if original_pods['namespace'][i] == 'kube-system':
+            updated_pods["where"].append(original_pods["where"][i])
+        else:
+            updated_pods["where"].append(new_pods["where"][low_count])
+            low_count += 1
+        count += 1
+
+    return updated_pods

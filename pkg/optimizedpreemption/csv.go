@@ -1,28 +1,29 @@
 package optimizedpreemption
 
 import (
-	"os"
 	"encoding/csv"
 	"encoding/json"
+	"os"
 	"strconv"
 )
 
 type CsvBin struct {
-	index uint
+	index  uint
 	memory int64
-	cpu int64
+	cpu    int64
 	labels []string
 }
 
 type CsvPod struct {
-	index uint
+	index  uint
 	memory int64
-	cpu int64
+	cpu    int64
 	// labels []string
-	bin uint
-	priority int32
-	affinity []string
+	bin          uint
+	priority     int32
+	affinity     []string
 	antiaffinity []string
+	namespace    string
 }
 
 type CsvRecord interface {
@@ -31,9 +32,9 @@ type CsvRecord interface {
 
 func (bin CsvBin) getRecord() []string {
 	if jsonString, err := json.Marshal(bin.labels); err != nil || len(bin.labels) == 0 {
-		return []string{"bin", strconv.FormatUint(uint64(bin.index), 10), strconv.FormatInt(bin.memory, 10), strconv.FormatInt(bin.cpu, 10), "[]", "", "", "", ""}
+		return []string{"bin", strconv.FormatUint(uint64(bin.index), 10), strconv.FormatInt(bin.memory, 10), strconv.FormatInt(bin.cpu, 10), "[]", "", "", "", "", ""}
 	} else {
-		return []string{"bin", strconv.FormatUint(uint64(bin.index), 10), strconv.FormatInt(bin.memory, 10), strconv.FormatInt(bin.cpu, 10), string(jsonString), "", "", "", ""}
+		return []string{"bin", strconv.FormatUint(uint64(bin.index), 10), strconv.FormatInt(bin.memory, 10), strconv.FormatInt(bin.cpu, 10), string(jsonString), "", "", "", "", ""}
 	}
 }
 
@@ -54,7 +55,7 @@ func (pod CsvPod) getRecord() []string {
 		antiaffinity = string(jsonAnitaffinity)
 	}
 
-	return []string{"pod", strconv.FormatUint(uint64(pod.index), 10), strconv.FormatInt(pod.memory, 10), strconv.FormatInt(pod.cpu, 10), "", strconv.FormatUint(uint64(pod.bin), 10), strconv.FormatInt(int64(pod.priority), 10), affinity, antiaffinity}
+	return []string{"pod", strconv.FormatUint(uint64(pod.index), 10), strconv.FormatInt(pod.memory, 10), strconv.FormatInt(pod.cpu, 10), "", strconv.FormatUint(uint64(pod.bin), 10), strconv.FormatInt(int64(pod.priority), 10), affinity, antiaffinity, pod.namespace}
 }
 
 func printCsv(records []CsvRecord, path string) error {
@@ -67,7 +68,7 @@ func printCsv(records []CsvRecord, path string) error {
 	defer csvWriter.Flush()
 
 	// Header
-	if err := csvWriter.Write([]string{"type", "index", "ram", "cpu", "label", "where", "priority", "affinity", "anti_affinity"}); err != nil {
+	if err := csvWriter.Write([]string{"type", "index", "ram", "cpu", "label", "where", "priority", "affinity", "anti_affinity", "namespace"}); err != nil {
 		return err
 	}
 

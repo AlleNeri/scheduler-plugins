@@ -105,7 +105,7 @@ var (
 
 	// Default for OptimizedPreemption
 	// DefaultOptimizedPreemptionTimeout is the default timeout for optimized preemption
-	DefaultOptimizedPreemptionTimeout = int64(10)
+	DefaultOptimizedPreemptionTimeout int64 = 1000
 )
 
 // SetDefaults_CoschedulingArgs sets the default parameters for Coscheduling plugin.
@@ -256,7 +256,7 @@ func SetDefaults_SySchedArgs(obj *SySchedArgs) {
 }
 
 // SetDefaults_OptimizedPreemptionArgs sets the default parameters for OptimizedPreemptionArgs plugin.
-func SetDefaults_LogPlugArgs(obj *OptimizedPreemptionArgs) {
+func SetDefaults_OptimizedPreemptionArgs(obj *OptimizedPreemptionArgs) {
 	if obj.Timeout == nil {
 		obj.Timeout = &DefaultOptimizedPreemptionTimeout
 	}

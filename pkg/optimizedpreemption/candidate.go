@@ -1,18 +1,17 @@
 package optimizedpreemption
 
 import (
-	v1 "k8s.io/api/core/v1"
-	extenderv1 "k8s.io/kube-scheduler/extender/v1"
-	"k8s.io/kubernetes/pkg/scheduler/framework"
-	"k8s.io/apiserver/pkg/util/feature"
-	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/scheduler/util"
-	"k8s.io/kubernetes/pkg/scheduler/metrics"
-	apipod "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/pkg/scheduler/framework/parallelize"
-	"k8s.io/klog/v2"
 	"context"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/klog/v2"
+	apipod "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/kubernetes/pkg/scheduler/framework"
+	"k8s.io/kubernetes/pkg/scheduler/framework/parallelize"
+	"k8s.io/kubernetes/pkg/scheduler/metrics"
+	"k8s.io/kubernetes/pkg/scheduler/util"
 )
 
 // Candidate represents a nominated node on which the preemptor can be scheduled,
@@ -23,18 +22,7 @@ type candidate struct {
 	// Victims wraps a list of to-be-preempted Pods.
 	victims []*v1.Pod
 	// Name is the target node name where the preemptor gets nominated to run.
-	name	string
-}
-
-func (c *candidate) Victims() *extenderv1.Victims {
-	return &extenderv1.Victims{
-		Pods: c.victims,
-		NumPDBViolations: 0,
-	}
-}
-
-func (c *candidate) Name() string {
-	return c.name
+	name string
 }
 
 func (c *candidate) EvictVictims(fh framework.Handle, ctx context.Context, pod *v1.Pod, pluginName string) *framework.Status {
@@ -50,7 +38,7 @@ func (c *candidate) EvictVictims(fh framework.Handle, ctx context.Context, pod *
 		// Otherwise, we should delete the victim.
 		if waitingPod := fh.GetWaitingPod(victim.UID); waitingPod != nil {
 			waitingPod.Reject(pluginName, "preempted")
-			logger.V(2).Info("Preemptor pod rejected a waiting pod", "preemptor", klog.KObj(pod), "waitingPod", klog.KObj(victim), "node", c.Name())
+			logger.V(2).Info("Preemptor pod rejected a waiting pod", "preemptor", klog.KObj(pod), "waitingPod", klog.KObj(victim), "node", c.name)
 		} else {
 			if feature.DefaultFeatureGate.Enabled(features.PodDisruptionConditions) {
 				condition := &v1.PodCondition{
@@ -90,26 +78,27 @@ func (c *candidate) EvictVictims(fh framework.Handle, ctx context.Context, pod *
 	return nil
 }
 
-func createCandidate(nodeMap map[uint]string, podMap map[uint]*v1.Pod, from []uint, to []uint) candidate {
-	var candidate candidate
-	// Because of the printClusterState function, the unschedulablePod is always the last pod in the output file so the last in the OldPod and NewPod lists
-	// Get the unschedulablePod node name
-	candidate.name = nodeMap[to[len(to) - 1]]
-	// Remove the info about the unschedulablePod from the lists
-	from = from[:len(from) - 1]
-	to = to[:len(to) - 1]
+var ErrNoCandidate = fmt.Errorf("no candidate found")
 
-	// The victims are the pods that have a different node number in the new_pods list
-	victims := []uint{}
-	for i, node := range from {
-		if node != to[i] {
-			victims = append(victims, uint(i))
+func createCandidate(nodeMap map[uint]string, podMap map[uint]*v1.Pod, solution []uint) (candidate, error) {
+	// Because of the printClusterState function, the unschedulablePod is always the last pod in the output csv file so the last in the solution list
+	nodeIndex := solution[len(solution)-1]
+	if nodeIndex <= 0 {
+		return candidate{}, ErrNoCandidate
+	}
+
+	var candidate candidate
+	// Get the unschedulablePod node name
+	candidate.name = nodeMap[nodeIndex]
+	// Remove the info about the unschedulablePod from the list
+	solution = solution[:len(solution)-1]
+
+	// The victims are the pods that have a node number different from 0 in the solution list
+	for i, node := range solution {
+		if node != 0 {
+			candidate.victims = append(candidate.victims, podMap[uint(i)])
 		}
 	}
-	// Get the victims Pods
-	for _, victim := range victims {
-		candidate.victims = append(candidate.victims, podMap[victim])
-	}
 
-	return candidate
+	return candidate, nil
 }

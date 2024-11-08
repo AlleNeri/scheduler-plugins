@@ -1,7 +1,7 @@
-type,index,ram,cpu,label,where,priority,affinity,anti_affinity
-bin,1,5,5,['disk=ssd'],,,,
-bin,2,6,6,['network=10Gbps'],,,,
-pod,0,5,5,,2,10,[],[]
-pod,1,2,2,,0,50,['disk=ssd'],[]
-pod,2,2,2,,0,50,[],[]
-pod,3,2,2,,0,50,[],['network=10Gbps']
+type,index,ram,cpu,label,where,priority,affinity,anti_affinity,namespace
+bin,1,5,5,['disk=ssd'],,,,,
+bin,2,6,6,['network=10Gbps'],,,,,
+pod,0,5,5,,2,10,[],[],
+pod,1,2,2,,0,50,['disk=ssd'],[],
+pod,2,2,2,,0,50,[],[],
+pod,3,2,2,,0,50,[],['network=10Gbps'],

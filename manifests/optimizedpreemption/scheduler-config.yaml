@@ -5,10 +5,19 @@ clientConnection:
 profiles:
 - schedulerName: default-scheduler
   plugins:
+    preFilter:
+      enabled:
+      - name: OptimizedPreemption
+        weight: 100
+    filter:
+      enabled:
+      - name: OptimizedPreemption
+        weight: 100
     postFilter:
       enabled:
       - name: OptimizedPreemption
+        weight: 0
   pluginConfig:
   - name: OptimizedPreemption
     args:
-      timeout: 13
+      timeout: 120000

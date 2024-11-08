@@ -32,7 +32,7 @@ def init_vars_constraints(bins, pods):
         for p2 in pods["index"][p1+1:]:
             if pods["ram"][p1] == pods["ram"][p2] and pods["cpu"][p1] == pods["cpu"][p2] and pods["priority"][p1] == pods["priority"][p2] and pods["affinity"][p1] == pods["affinity"][p2] and pods["anti_affinity"][p1] == pods["anti_affinity"][p2]:
                 for b1 in bins['index']:
-                    for b2 in bins['index'][b1:]:
+                    for b2 in bins['index'][b1+1:]:
                         o.Add(x[(p1, b1)] <= x[(p2, b2)])
     # Redundant Costraint for equivalent bins
     # If two bins are equivalent both for cpu and ram we impose that the cpu and ram allocated to the one with the lowest index is less or equal than the one on the other side

@@ -15,13 +15,14 @@ def csv_to_internal(pathToCsv: str) -> tuple[dict, dict]:
     pods["priority"] = []
     pods["affinity"] = []
     pods["anti_affinity"] = []
+    pods["namespace"] = []
     with open(pathToCsv, newline='') as csvfile:
         spamreader = csv.reader(csvfile, delimiter=',', quotechar='|', escapechar="\\")
         headers = ["type",
                    "index", "ram", "cpu",
                    "label",
                    "where", "priority",
-                   "affinity", "anti_affinity"]
+                   "affinity", "anti_affinity", "namespace"]
         if next(spamreader) != headers:
             raise Exception("Error in CSV file (You could be missing the title)")
         for row in spamreader:
@@ -38,6 +39,7 @@ def csv_to_internal(pathToCsv: str) -> tuple[dict, dict]:
                 pods["priority"].append(int(row[6]))
                 pods["affinity"].append(ast.literal_eval(row[7]))
                 pods["anti_affinity"].append(ast.literal_eval(row[8]))
+                pods["namespace"].append(row[9])
             else:
                 raise Exception("Error in CSV file")
     return bins, pods
@@ -47,7 +49,7 @@ def internal_to_csv(bins, pods, pathToCsv: str):
                "index", "ram", "cpu",
                "label",
                "where", "priority",
-               "affinity", "anti_affinity"]
+               "affinity", "anti_affinity", "namespace"]
     with open(pathToCsv, 'w', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', escapechar='\\')
         spamwriter.writerow(headers)
@@ -62,5 +64,5 @@ def internal_to_csv(bins, pods, pathToCsv: str):
                                  pods["index"][p], pods["ram"][p], pods["cpu"][p],
                                  "",
                                  pods["where"][p], pods["priority"][p],
-                                 pods["affinity"][p], pods["anti_affinity"][p]])
+                                 pods["affinity"][p], pods["anti_affinity"][p], pods["namespace"][p]])
     return

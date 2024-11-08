@@ -28,7 +28,7 @@ RUN apt-get update && \
 	apt-get install -y python3 python3-pip python3-venv
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-ENV SCRIPT_PATH=/tmp/script
+ENV SCRIPT_PATH=/opt/script
 
 COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/bin/kube-scheduler /bin/kube-scheduler
 RUN mkdir -p $SCRIPT_PATH
@@ -36,7 +36,7 @@ COPY --from=0 /go/src/sigs.k8s.io/scheduler-plugins/script/* $SCRIPT_PATH/
 
 RUN python3 -m venv $SCRIPT_PATH/venv
 # RUN $SCRIPT_PATH/venv/bin/pip install --upgrade pip
-RUN $SCRIPT_PATH/venv/bin/pip install ortools	# -r $SCRIPT_PATH/requirements.txt
+RUN $SCRIPT_PATH/venv/bin/pip install -r $SCRIPT_PATH/requirements.txt
 
 WORKDIR /bin
 CMD ["kube-scheduler"]
