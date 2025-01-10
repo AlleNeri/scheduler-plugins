@@ -14,7 +14,7 @@ That's the reason why the the scheduler `Dockerfile` isn't the same as the offic
 ## Running the plugin
 For the previous motivations, the plugin is not meant to run in a production environment.
 Nevertheless, there are some extra entries in the `Makefile` to generate the scheduler image with this plugin and run it in a Minikube cluster.
-To do it, it's required a running Minikube cluster and Docker in the host machine.
+To do this, it's required a running Minikube cluster and Docker in the host machine.
 The command `make optimized-preemption-plugin` generates the scheduler image, loads it into the Minikube cluster and restarts the scheduler with the plugin.
 
 ## Configuration
@@ -24,9 +24,9 @@ The plugin has two configuration files in the `manifests/optimizedpreemption/` d
 
 ## Testing
 As a proof of concept, the only test is a simple working example with a few pods and nodes.
-The cluster used consists of three nodes, created with the default Minikube configuration(2 CPUs and 2GB of RAM).
+The cluster used consists of three nodes, which are created with the default Minikube configuration (2 CPUs and 2GB of RAM).
 To create a cluster like this, run `minikube start` which uses the default configuration.
-The necessary for testing is in the `test-optimized-preemption` directory.
+The essential for this test is in the `test-optimized-preemption` directory.
 To see the plugin in action, after its activation (see the [Running the plugin](#running-the-plugin) section), run the following commands:
 - `watch -n 1 minikube kubectl -- get pods -A -o=wide` to see the pods distribution.
 - `watch -n 1 minikube kubectl -- logs -n kube-system kube-scheduler-minikube` to see the scheduler logs.
@@ -41,5 +41,5 @@ The pods need to be created one by one in the following order:
 In that way, it is possible to see the eviction of the second pod and the third being allocated by the plugin in the output of the commands above.
 This test is based on the resources requested by the pods, relating to those available in the nodes.
 This kind of interaction isn't always the same, for that reason the test could not work properly in some cases.
-In this case it could be related to the resources of the pods and nodes.
+In this case, the problem could be related to the resources of the pods and nodes.
 In the `test-optimized-preemption/scripts/` directory, there is the `node-resource-allocation` script that can help to tune the pods parameters and make the test work.
