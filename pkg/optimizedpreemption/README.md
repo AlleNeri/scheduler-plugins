@@ -11,6 +11,11 @@ OrTool is the best solver for this job, according to the [studies done](https://
 To use OrTool, the plugin calls a python script that wraps the solver because there is no golang library for OrTool.
 That's the reason why the the scheduler `Dockerfile` isn't the same as the official one.
 
+## The implementation
+This plugin implementation had been created forking the [`scheduler-plugins` official repository](https://github.com/kubernetes-sigs/scheduler-plugins) master branch, at commit `004e0d9de203ede67e0ae03b427ed82db5fb618b`.
+Besides the plugin code, there are some other integration into the scheduler code due to the required registration of this plugin and its parameter.
+To reproduce the correct and complete environment use `rsync` on this folder and the `scheduler-plugin` repository at the previously mentioned commit.
+
 ## Running the plugin
 For the previous motivations, the plugin is not meant to run in a production environment.
 Nevertheless, there are some extra entries in the `Makefile` to generate the scheduler image with this plugin and run it in a Minikube cluster.
@@ -23,23 +28,5 @@ The plugin has two configuration files in the `manifests/optimizedpreemption/` d
 `scheduler-config.yaml` contains the plugin profile configuration; in this file is also set the plugin parameter.
 
 ## Testing
-As a proof of concept, the only test is a simple working example with a few pods and nodes.
-The cluster used consists of three nodes, which are created with the default Minikube configuration (2 CPUs and 2GB of RAM).
-To create a cluster like this, run `minikube start` which uses the default configuration.
-The essential for this test is in the `test-optimized-preemption` directory.
-To see the plugin in action, after its activation (see the [Running the plugin](#running-the-plugin) section), run the following commands:
-- `watch -n 1 minikube kubectl -- get pods -A -o=wide` to see the pods distribution.
-- `watch -n 1 minikube kubectl -- logs -n kube-system kube-scheduler-minikube` to see the scheduler logs.
-
-After that, create the pods with the command `minikube kubectl -- apply -f <pod-file>.yaml`.
-For the previous discussed cluster, the configuration of the pods to be created are in the `test-optimized-preemption/pods/` directory.
-The pods need to be created one by one in the following order:
-- `pod-a.yaml` to saturate the last node.
-- `pod-b.yaml`. If this pod is directly allocated to the first node, create also `pod-b-bis.yaml` and delete the original one with `minikube kubectl -- delete pod pod-b`.
-- `pod-c.yaml` to saturate the second node.
-
-In that way, it is possible to see the eviction of the second pod and the third being allocated by the plugin in the output of the commands above.
-This test is based on the resources requested by the pods, relating to those available in the nodes.
-This kind of interaction isn't always the same, for that reason the test could not work properly in some cases.
-In this case, the problem could be related to the resources of the pods and nodes.
-In the `test-optimized-preemption/scripts/` directory, there is the `node-resource-allocation` script that can help to tune the pods parameters and make the test work.
+In the `test-optimized-preemption` directory, there is a test to check the plugin functioning.
+This test is easily run in a standard Minikube cluster of 3 nodes created with `minikube start -n 3`.
