@@ -3,11 +3,15 @@ package optimizedpreemption
 import (
 	"encoding/json"
 	"fmt"
-	"k8s.io/api/core/v1"
+	"strings"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	v1Listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"sigs.k8s.io/scheduler-plugins/apis/config"
-	"strings"
 )
 
 /** get data from the script **/
@@ -123,7 +127,7 @@ func computePodResourceRequest(pod *v1.Pod) *framework.Resource {
 }
 
 // Print the cluster state in csv.
-func printClusterState(allNodes []*framework.NodeInfo, path string, unschedulablePod *v1.Pod) (map[uint]string, map[uint]*v1.Pod) {
+func printClusterState(allNodes []*framework.NodeInfo, path string, batchOfUnschedulables []*v1.Pod) (map[uint]string, map[uint]*v1.Pod) {
 	// Get the info of the cluster.
 	var record []CsvRecord
 	var globalPodNumb uint = 0
@@ -184,22 +188,57 @@ func printClusterState(allNodes []*framework.NodeInfo, path string, unschedulabl
 	}
 
 	// Get the info of the unschedulable pod.
-	/**		IMPORTANT: the unschedulable pod is the last pod in the csv.		**/
-	var csvPod CsvPod
-	csvPod.index = globalPodNumb
-	csvPod.bin = 0 // Bin are indexed from 1; so 0 means unschedulable pod.
-	csvPod.priority = *unschedulablePod.Spec.Priority
-	csvPod.namespace = unschedulablePod.Namespace
-	podResources := computePodResourceRequest(unschedulablePod)
-	csvPod.memory = podResources.Memory
-	csvPod.cpu = podResources.MilliCPU
-	record = append(record, csvPod)
+	/**		IMPORTANT: the unschedulable pods are the last pods in the csv.		**/
+	for _, unschedulablePod := range batchOfUnschedulables {
+		var csvPod CsvPod
+		csvPod.index = globalPodNumb
+		csvPod.bin = 0 // Bin are indexed from 1; so 0 means unschedulable pod.
+		csvPod.priority = *unschedulablePod.Spec.Priority
+		csvPod.namespace = unschedulablePod.Namespace
+		podResources := computePodResourceRequest(unschedulablePod)
+		csvPod.memory = podResources.Memory
+		csvPod.cpu = podResources.MilliCPU
+		record = append(record, csvPod)
+		globalPodNumb++
+	}
 
 	// Print the csv.
 	printCsv(record, path)
 
 	// Return the node and pod map. They will be used to parse the script output.
 	return nodeMap, podMap
+}
+
+// Move to the ActiveQueue all the pods with a specific label.
+func activatePodsWithLabel(podLister v1Listers.PodLister,
+	label string,
+	value string,
+	state *framework.CycleState) error {
+	pods, err := podLister.List(labels.SelectorFromSet(labels.Set{label: value}))
+	if err != nil {
+		return err
+	}
+
+	if len(pods) > 0 {
+		c, err := state.Read(framework.PodsToActivateKey)
+		if err != nil {
+			return err
+		}
+
+		s, ok := c.(*framework.PodsToActivate)
+		if !ok {
+			return fmt.Errorf("failed to cast %T to *framework.PodsToActivate", c)
+		}
+
+		s.Lock()
+		for _, pod := range pods {
+			namespacedName := GetNamespacedName(pod)
+			s.Map[namespacedName] = pod
+		}
+		s.Unlock()
+	}
+
+	return nil
 }
 
 /** check if there are only zeros in an array **/
@@ -219,4 +258,9 @@ func removeHashFromPodName(podName string) string {
 		parts = parts[:len(parts)-1]
 	}
 	return strings.Join(parts, "-")
+}
+
+/** GetNamespacedName returns the namespaced name. **/
+func GetNamespacedName(obj metav1.Object) string {
+	return fmt.Sprintf("%v/%v", obj.GetNamespace(), obj.GetName())
 }

@@ -80,9 +80,9 @@ func (c *candidate) EvictVictims(fh framework.Handle, ctx context.Context, pod *
 
 var ErrNoCandidate = fmt.Errorf("no candidate found")
 
-func createCandidate(nodeMap map[uint]string, podMap map[uint]*v1.Pod, solution []uint) (candidate, error) {
-	// Because of the printClusterState function, the unschedulablePod is always the last pod in the output csv file so the last in the solution list
-	nodeIndex := solution[len(solution)-1]
+func createCandidate(nodeMap map[uint]string, podMap map[uint]*v1.Pod, solution []uint, batchSize uint) (candidate, error) {
+	// Because of the printClusterState function, the unschedulablePods are always the last in the output csv file so the last in the solution list
+	nodeIndex := solution[len(solution)-int(batchSize)]
 	if nodeIndex <= 0 {
 		return candidate{}, ErrNoCandidate
 	}
@@ -90,8 +90,8 @@ func createCandidate(nodeMap map[uint]string, podMap map[uint]*v1.Pod, solution 
 	var candidate candidate
 	// Get the unschedulablePod node name
 	candidate.name = nodeMap[nodeIndex]
-	// Remove the info about the unschedulablePod from the list
-	solution = solution[:len(solution)-1]
+	// Remove the info about the unschedulablePods from the list
+	solution = solution[:len(solution)-int(batchSize)]
 
 	// The victims are the pods that have a node number different from 0 in the solution list
 	for i, node := range solution {
