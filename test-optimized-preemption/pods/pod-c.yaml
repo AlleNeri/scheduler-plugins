@@ -15,12 +15,14 @@ spec:
         pod: pod-c
     spec:
       containers:
-      - name: stress-box
-        image: alpine:latest
-        resources:
-          requests:
-            cpu: "1000m"
-            memory: "2490Mi"
-          limits:
-            cpu: "1000m"
-            memory: "2490Mi"
+        - name: stress-box
+          image: alpine:latest
+          stdin: true
+          tty: true
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "1750Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1750Mi"
